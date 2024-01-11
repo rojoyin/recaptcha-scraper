@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import scraping
+from scraper.routers import scraping
 
 app = FastAPI()
 app.include_router(scraping.router)

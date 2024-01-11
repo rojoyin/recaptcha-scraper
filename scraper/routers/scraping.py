@@ -2,8 +2,8 @@ from typing import Dict
 
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.url import UrlModel
-from app.services.playwright import scrape_with_playwright_async
+from scraper.schemas.url import UrlModel
+from scraper.services.playwright import scrape_with_playwright_async
 
 router = APIRouter()
 
