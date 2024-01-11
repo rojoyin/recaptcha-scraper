@@ -1,11 +1,8 @@
 from fastapi import APIRouter
-from pydantic import BaseModel, HttpUrl
+
+from app.schemas.url import UrlModel
 
 router = APIRouter()
-
-
-class UrlModel(BaseModel):
-    url: HttpUrl
 
 
 @router.post("/scrape/")
