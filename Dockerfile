@@ -8,6 +8,8 @@ WORKDIR /app
 RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH "/root/.local/bin:$PATH"
 
+RUN apt-get update && apt-get install ffmpeg -y
+
 COPY pyproject.toml poetry.lock ./
 
 RUN poetry config virtualenvs.create false && \
