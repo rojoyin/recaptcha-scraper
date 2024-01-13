@@ -52,7 +52,7 @@ class ReCaptchaSolver:
     async def random_delay(self):
         waiting_time = 1000 * random.randint(1, 3)
         LOG.info(f"Waiting for {waiting_time} milliseconds")
-        await self.page.wait_for_timeout(random.randint(1, 3) * 1000)
+        await self.page.wait_for_timeout(waiting_time)
 
     async def solve(self):
         LOG.info("Attempting to solve the captcha")
