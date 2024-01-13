@@ -59,15 +59,20 @@ class ReCaptchaSolver:
         await self.click_recaptcha_main_frame()
         await self.random_delay()
         await self.click_challenge_frame()
-        href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute("href")
-        urllib.request.urlretrieve(href, TEMP_MP3_FILE)
-        await self.challenge_frame.fill("id=audio-response", self.convert_speech_to_text(TEMP_MP3_FILE))
+        await self.store_audio_challenge(TEMP_MP3_FILE)
+        text = self.convert_speech_to_text(TEMP_MP3_FILE)
+        await self.challenge_frame.fill("id=audio-response", text)
         await self.challenge_frame.click("id=recaptcha-verify-button")
         await self.random_delay()
         LOG.info("Submitting details")
         await self.page.locator('[type="submit"]').click()
         content = await self.page.content()
         return content
+
+    async def store_audio_challenge(self, mp3_file):
+        href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute(
+            "href")
+        urllib.request.urlretrieve(href, mp3_file)
 
     async def click_challenge_frame(self):
         challenge_frame_name = await self.page.locator(
