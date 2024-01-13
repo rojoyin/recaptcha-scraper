@@ -90,7 +90,6 @@ async def scrape_with_playwright_async(url: str):
             solver = ReCaptchaSolver(p, url, recognizer)
             await solver.setup_page()
             content = await solver.solve()
-            await clean_up()
             return content
         finally:
             await clean_up()
