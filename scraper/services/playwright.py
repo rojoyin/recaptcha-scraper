@@ -22,18 +22,17 @@ async def clean_up():
 
 class ReCaptchaSolver:
 
-    def __init__(self, playwright, url):
-        self.recognizer = Recognizer()
+    def __init__(self, playwright, url, recognizer):
+        self.recognizer = recognizer
         self.playwright = playwright
         self.url = url
-        self.browser = None
         self.page = None
         LOG.info("Created solver class")
 
     async def setup_page(self):
         LOG.info("Navigating to URL")
-        self.browser = await self.playwright.chromium.launch(headless=True)
-        self.page = await self.browser.new_page()
+        browser = await self.playwright.chromium.launch(headless=True)
+        self.page = await browser.new_page()
         await self.page.goto(self.url)
 
     def convert_speech_to_text(self, mp3_file):
@@ -87,7 +86,8 @@ class ReCaptchaSolver:
 async def scrape_with_playwright_async(url: str):
     async with async_playwright() as p:
         try:
-            solver = ReCaptchaSolver(p, url)
+            recognizer = Recognizer()
+            solver = ReCaptchaSolver(p, url, recognizer)
             await solver.setup_page()
             content = await solver.solve()
             await clean_up()
