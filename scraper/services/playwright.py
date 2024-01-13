@@ -32,7 +32,7 @@ class ReCaptchaSolver:
 
     async def setup_page(self):
         LOG.info("Navigating to URL")
-        self.browser = await self.playwright.chromium.launch(headless=False)
+        self.browser = await self.playwright.chromium.launch(headless=True)
         self.page = await self.browser.new_page()
         await self.page.goto(self.url)
 
@@ -52,7 +52,7 @@ class ReCaptchaSolver:
 
     async def random_delay(self):
         waiting_time = 1000 * random.randint(1, 3)
-        LOG.info(f"Waiting for {waiting_time} in milliseconds")
+        LOG.info(f"Waiting for {waiting_time} milliseconds")
         await self.page.wait_for_timeout(random.randint(1, 3) * 1000)
 
     async def solve(self):
