@@ -57,19 +57,21 @@ class ReCaptchaSolver:
     async def solve(self):
         LOG.info("Trying to solve the captcha")
         await self.click_recaptcha_main_frame()
-        await self.random_delay()
         await self.click_challenge_frame()
-        await self.store_audio_challenge(TEMP_MP3_FILE)
+        await self.get_audio_challenge(TEMP_MP3_FILE)
         text = self.convert_speech_to_text(TEMP_MP3_FILE)
-        await self.challenge_frame.fill("id=audio-response", text)
-        await self.challenge_frame.click("id=recaptcha-verify-button")
-        await self.random_delay()
+        await self.write_text_to_box(text)
         LOG.info("Submitting details")
         await self.page.locator('[type="submit"]').click()
         content = await self.page.content()
         return content
 
-    async def store_audio_challenge(self, mp3_file):
+    async def write_text_to_box(self, text):
+        await self.challenge_frame.fill("id=audio-response", text)
+        await self.challenge_frame.click("id=recaptcha-verify-button")
+        await self.random_delay()
+
+    async def get_audio_challenge(self, mp3_file):
         href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute(
             "href")
         urllib.request.urlretrieve(href, mp3_file)
@@ -87,6 +89,7 @@ class ReCaptchaSolver:
         recaptcha_frame_name = await self.page.locator("//iframe[@title='reCAPTCHA']").get_attribute("name")
         captcha = self.page.frame(name=recaptcha_frame_name)
         await captcha.click("//div[@class='recaptcha-checkbox-border']")
+        await self.random_delay()
 
 
 async def scrape_with_playwright_async(url: str):
