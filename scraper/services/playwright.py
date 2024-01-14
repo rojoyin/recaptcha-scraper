@@ -31,7 +31,7 @@ class ReCaptchaSolver:
 
     async def setup_page(self):
         LOG.info("Navigating to URL")
-        browser = await self.playwright.chromium.launch(headless=False)
+        browser = await self.playwright.chromium.launch(headless=True)
         self.page = await browser.new_page()
         await self.page.goto(self.url)
 
