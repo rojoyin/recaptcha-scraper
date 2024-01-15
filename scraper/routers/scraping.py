@@ -1,21 +1,18 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 
 from scraper.schemas.scrape_response import ScrapeResponse
 from scraper.schemas.url import UrlModel
-from scraper.services.playwright import scrape_with_playwright_async
+from scraper.services.scraping.scraper import Scraper
+from scraper.services.scraping.scraper_selector import get_scraper
 
 router = APIRouter()
 LOG = logging.getLogger(__name__)
 
 
 @router.post("/scrape/")
-async def scrape_url(item: UrlModel) -> ScrapeResponse:
-    try:
-        url = str(item.url)
-        LOG.info(f"Receive URL to scrape: {url}")
-        content = await scrape_with_playwright_async(url)
-        return content
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def scrape_url(item: UrlModel, scraper: Scraper = Depends(get_scraper)) -> ScrapeResponse:
+    url = str(item.url)
+    return await scraper.scrape(url)
+
