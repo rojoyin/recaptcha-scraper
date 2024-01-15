@@ -30,7 +30,8 @@ class ReCaptchaSolver:
         self.challenge_frame = None
 
     async def __open_browser(self, p):
-        self.browser = await p.chromium.launch(headless=False)
+        use_headless = os.getenv("headless_browser", "True") == "True"
+        self.browser = await p.chromium.launch(headless=use_headless)
 
     async def __close_browser(self):
         if self.browser:

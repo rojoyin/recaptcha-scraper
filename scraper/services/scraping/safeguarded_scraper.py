@@ -1,5 +1,5 @@
 from scraper.schemas.scrape_response import ScrapeResponse
-from scraper.services.scraping.interfaces.challenge_solver import ChallengeSolver
+from scraper.services.challenge_solver.interfaces.challenge_solver import ChallengeSolver
 
 
 class SafeguardedSiteScraper:

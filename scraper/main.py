@@ -1,5 +1,6 @@
 import logging
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from scraper.routers import scraping
@@ -11,6 +12,8 @@ logging.basicConfig(
 
 app = FastAPI()
 app.include_router(scraping.router)
+
+load_dotenv()
 
 
 @app.get("/")
