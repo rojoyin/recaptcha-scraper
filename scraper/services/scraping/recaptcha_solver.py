@@ -29,19 +29,19 @@ class ReCaptchaSolver:
         self.page = None
         self.challenge_frame = None
 
-    async def open_browser(self, p):
+    async def __open_browser(self, p):
         self.browser = await p.chromium.launch(headless=False)
 
-    async def close_browser(self):
+    async def __close_browser(self):
         if self.browser:
             await self.browser.close()
 
-    async def setup_page(self, url):
+    async def __setup_page(self, url):
         LOG.info("Navigating to URL")
         self.page = await self.browser.new_page()
         await self.page.goto(url)
 
-    def convert_speech_to_text(self, mp3_file):
+    def __convert_speech_to_text(self, mp3_file):
         try:
             LOG.info("Downloading audio")
             pydub.AudioSegment.from_mp3(mp3_file).export(TEMP_WAV_FILE, format="wav")
@@ -55,7 +55,7 @@ class ReCaptchaSolver:
         except Exception as e:
             LOG.error("Error while processing audio", e)
 
-    async def random_delay(self):
+    async def __random_delay(self):
         waiting_time = 1000 * random.randint(1, 3)
         LOG.info(f"Waiting for {waiting_time} milliseconds")
         await self.page.wait_for_timeout(waiting_time)
@@ -63,33 +63,33 @@ class ReCaptchaSolver:
     async def solve(self, url):
         async with async_playwright() as p:
             try:
-                await self.open_browser(p)
-                await self.setup_page(url)
+                await self.__open_browser(p)
+                await self.__setup_page(url)
                 LOG.info("Trying to solve the captcha")
-                await self.click_recaptcha_main_frame()
-                await self.click_challenge_frame()
-                await self.get_audio_challenge(TEMP_MP3_FILE)
-                text = self.convert_speech_to_text(TEMP_MP3_FILE)
-                await self.write_text_to_box(text)
+                await self.__click_recaptcha_main_frame()
+                await self.__click_challenge_frame()
+                await self.__get_audio_challenge(TEMP_MP3_FILE)
+                text = self.__convert_speech_to_text(TEMP_MP3_FILE)
+                await self.__write_text_to_box(text)
                 LOG.info("Submitting details")
                 await self.page.locator('[type="submit"]').click()
                 content = await self.page.content()
-                await self.close_browser()
+                await self.__close_browser()
                 return content
             finally:
                 await clean_up()
 
-    async def write_text_to_box(self, text):
+    async def __write_text_to_box(self, text):
         await self.challenge_frame.fill("id=audio-response", text)
         await self.challenge_frame.click("id=recaptcha-verify-button")
-        await self.random_delay()
+        await self.__random_delay()
 
-    async def get_audio_challenge(self, mp3_file):
+    async def __get_audio_challenge(self, mp3_file):
         href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute(
             "href")
         urllib.request.urlretrieve(href, mp3_file)
 
-    async def click_challenge_frame(self):
+    async def __click_challenge_frame(self):
         challenge_frame_name = await self.page.locator(
             "//iframe[contains(@src,'https://www.google.com/recaptcha/api2/bframe?')]").get_attribute(
             "name")
@@ -97,9 +97,9 @@ class ReCaptchaSolver:
         await self.challenge_frame.click("id=recaptcha-audio-button")
         await self.challenge_frame.click("//button[@aria-labelledby='audio-instructions rc-response-label']")
 
-    async def click_recaptcha_main_frame(self):
+    async def __click_recaptcha_main_frame(self):
         LOG.info("Find and click recaptcha iframe")
         recaptcha_frame_name = await self.page.locator("//iframe[@title='reCAPTCHA']").get_attribute("name")
         captcha = self.page.frame(name=recaptcha_frame_name)
         await captcha.click("//div[@class='recaptcha-checkbox-border']")
-        await self.random_delay()
+        await self.__random_delay()
