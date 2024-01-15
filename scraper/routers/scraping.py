@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from scraper.schemas.scrape_response import ScrapeResponse
 from scraper.schemas.url import UrlModel
 from scraper.services.scraping.scraper import Scraper
-from scraper.services.scraping.scraper_selector import get_scraper
+from scraper.services.scraping.service_selector import get_scraper
 
 router = APIRouter()
 LOG = logging.getLogger(__name__)

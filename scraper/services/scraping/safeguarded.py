@@ -1,14 +1,13 @@
 from typing import Any
 
-
-from scraper.services.scraping.recaptcha_solver import ReCaptchaSolver
+from scraper.services.scraping.challenge_solver import ChallengeSolver
 
 
 class SafeguardedSiteScraper:
 
-    def __init__(self, recaptcha_solver: ReCaptchaSolver):
-        self.recaptcha_solver = recaptcha_solver
+    def __init__(self, recaptcha_solver: ChallengeSolver):
+        self.challenge_solver = recaptcha_solver
 
     async def scrape(self, url) -> dict[str, Any]:
-        content = await self.recaptcha_solver.solve(url)
+        content = await self.challenge_solver.solve(url)
         return {"data": content}
