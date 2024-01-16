@@ -106,7 +106,13 @@ class ReCaptchaSolver:
 
     async def __click_recaptcha_main_frame(self):
         LOG.info("Find and click recaptcha iframe")
+        await self.page.wait_for_selector("//iframe[@title='reCAPTCHA']")
         recaptcha_frame_name = await self.page.locator("//iframe[@title='reCAPTCHA']").get_attribute("name")
+
+        if recaptcha_frame_name is None:
+            raise Exception("reCAPTCHA iframe not found")
+
         captcha = self.page.frame(name=recaptcha_frame_name)
+        await captcha.wait_for_selector("//div[@class='recaptcha-checkbox-border']", state="visible")
         await captcha.click("//div[@class='recaptcha-checkbox-border']")
         await self.__random_delay()
