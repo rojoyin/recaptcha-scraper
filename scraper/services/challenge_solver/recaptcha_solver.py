@@ -28,6 +28,7 @@ class ReCaptchaSolver:
         self.browser = None
         self.page = None
         self.challenge_frame = None
+        self.service_provider = "www.google.com"
 
     async def __open_browser(self, p):
         use_headless = os.getenv("headless_browser", "True") == "True"
@@ -88,7 +89,14 @@ class ReCaptchaSolver:
     async def __get_audio_challenge(self, mp3_file):
         href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute(
             "href")
-        urllib.request.urlretrieve(href, mp3_file)
+        aux = urllib.parse.urlparse(href)
+        if await self.__is_secure_url(aux):
+            urllib.request.urlretrieve(href, mp3_file)
+        else:
+            raise Exception("Audio file insecure")
+
+    async def __is_secure_url(self, aux):
+        return aux.scheme in ["http", "https"] and aux.netloc == self.service_provider
 
     async def __click_challenge_frame(self):
         challenge_frame_name = await self.page.locator(
