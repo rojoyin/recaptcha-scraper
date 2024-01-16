@@ -97,11 +97,22 @@ class ReCaptchaSolver:
         return aux.scheme in ["http", "https"] and aux.netloc == self.service_provider
 
     async def __click_challenge_frame(self):
+        await self.page.wait_for_selector(
+            "//iframe[contains(@src,'https://www.google.com/recaptcha/api2/bframe?')]",
+            state="attached"
+        )
         challenge_frame_name = await self.page.locator(
             "//iframe[contains(@src,'https://www.google.com/recaptcha/api2/bframe?')]").get_attribute(
             "name")
+
+        if challenge_frame_name is None:
+            raise Exception("Challenge iframe not found")
+
         self.challenge_frame = self.page.frame(name=challenge_frame_name)
+        await self.challenge_frame.wait_for_selector("id=recaptcha-audio-button", state="visible")
         await self.challenge_frame.click("id=recaptcha-audio-button")
+        await self.challenge_frame.wait_for_selector(
+            "//button[@aria-labelledby='audio-instructions rc-response-label']", state="visible")
         await self.challenge_frame.click("//button[@aria-labelledby='audio-instructions rc-response-label']")
 
     async def __click_recaptcha_main_frame(self):
