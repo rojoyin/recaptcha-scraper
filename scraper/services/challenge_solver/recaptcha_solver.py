@@ -2,23 +2,13 @@ import logging
 import os
 import random
 import urllib
+from tempfile import NamedTemporaryFile
 
 import pydub
 from playwright.async_api import async_playwright
 from speech_recognition import AudioFile
 
 LOG = logging.getLogger(__name__)
-
-TEMP_MP3_FILE = "audio.mp3"
-TEMP_WAV_FILE = "audio.wav"
-
-
-async def clean_up():
-    LOG.info("Remove intermediate files")
-    if os.path.exists(TEMP_MP3_FILE):
-        os.remove(TEMP_MP3_FILE)
-    if os.path.exists(TEMP_WAV_FILE):
-        os.remove(TEMP_WAV_FILE)
 
 
 class ReCaptchaSolver:
@@ -28,6 +18,7 @@ class ReCaptchaSolver:
         self.browser = None
         self.page = None
         self.challenge_frame = None
+        self.service_provider = "www.google.com"
 
     async def __open_browser(self, p):
         use_headless = os.getenv("headless_browser", "True") == "True"
@@ -44,22 +35,26 @@ class ReCaptchaSolver:
 
     def __convert_speech_to_text(self, mp3_file):
         try:
-            LOG.info("Downloading audio")
-            pydub.AudioSegment.from_mp3(mp3_file).export(TEMP_WAV_FILE, format="wav")
-            recaptcha_audio = AudioFile(TEMP_WAV_FILE)
-            LOG.info("Converting audio to text")
-            with recaptcha_audio as source:
-                audio = self.recognizer.record(source)
-            text = self.recognizer.recognize_google(audio)
-            LOG.info(f"Recognized text: {text}")
-            return text
+            with NamedTemporaryFile(suffix=".wav") as temp_wav_file:
+                LOG.info("Transforming mp3 to wav")
+                pydub.AudioSegment.from_mp3(mp3_file).export(temp_wav_file.name, format="wav")
+                with AudioFile(temp_wav_file.name) as recaptcha_audio:
+                    LOG.info("Transforming wav to text")
+                    audio = self.recognizer.record(recaptcha_audio)
+                text = self.recognizer.recognize_google(audio)
+                LOG.info(f"Recognized text: {text}")
+                return text
         except Exception as e:
-            LOG.error("Error while processing audio", e)
+            LOG.error("Error while processing audio: %s", e)
 
     async def __random_delay(self):
         waiting_time = 1000 * random.randint(1, 3)
         LOG.info(f"Waiting for {waiting_time} milliseconds")
         await self.page.wait_for_timeout(waiting_time)
+
+    async def clean_up(self):
+        LOG.info("Remove intermediate files")
+        await self.__close_browser()
 
     async def solve(self, url):
         async with async_playwright() as p:
@@ -69,38 +64,66 @@ class ReCaptchaSolver:
                 LOG.info("Trying to solve the captcha")
                 await self.__click_recaptcha_main_frame()
                 await self.__click_challenge_frame()
-                await self.__get_audio_challenge(TEMP_MP3_FILE)
-                text = self.__convert_speech_to_text(TEMP_MP3_FILE)
+                text = await self.__get_challenge_text()
                 await self.__write_text_to_box(text)
                 LOG.info("Submitting details")
                 await self.page.locator('[type="submit"]').click()
                 content = await self.page.content()
-                await self.__close_browser()
                 return content
+            except Exception as ex:
+                raise Exception("Error while solving the captcha", ex)
             finally:
-                await clean_up()
+                await self.clean_up()
 
     async def __write_text_to_box(self, text):
         await self.challenge_frame.fill("id=audio-response", text)
         await self.challenge_frame.click("id=recaptcha-verify-button")
         await self.__random_delay()
 
-    async def __get_audio_challenge(self, mp3_file):
+    async def __get_challenge_text(self):
         href = await self.challenge_frame.locator("//a[@class='rc-audiochallenge-tdownload-link']").get_attribute(
             "href")
-        urllib.request.urlretrieve(href, mp3_file)
+        parsed_url = urllib.parse.urlparse(href)
+
+        if not self.__is_secure_url(parsed_url):
+            raise Exception("Audio file insecure")
+
+        with NamedTemporaryFile(delete=False, suffix=".mp3") as temp_mp3_file:
+            urllib.request.urlretrieve(href, temp_mp3_file.name)
+            text = self.__convert_speech_to_text(temp_mp3_file)
+            return text
+
+    def __is_secure_url(self, aux):
+        return aux.scheme in ["http", "https"] and aux.netloc == self.service_provider
 
     async def __click_challenge_frame(self):
+        await self.page.wait_for_selector(
+            "//iframe[contains(@src,'https://www.google.com/recaptcha/api2/bframe?')]",
+            state="attached"
+        )
         challenge_frame_name = await self.page.locator(
             "//iframe[contains(@src,'https://www.google.com/recaptcha/api2/bframe?')]").get_attribute(
             "name")
+
+        if challenge_frame_name is None:
+            raise Exception("Challenge iframe not found")
+
         self.challenge_frame = self.page.frame(name=challenge_frame_name)
+        await self.challenge_frame.wait_for_selector("id=recaptcha-audio-button", state="visible")
         await self.challenge_frame.click("id=recaptcha-audio-button")
+        await self.challenge_frame.wait_for_selector(
+            "//button[@aria-labelledby='audio-instructions rc-response-label']", state="visible")
         await self.challenge_frame.click("//button[@aria-labelledby='audio-instructions rc-response-label']")
 
     async def __click_recaptcha_main_frame(self):
         LOG.info("Find and click recaptcha iframe")
+        await self.page.wait_for_selector("//iframe[@title='reCAPTCHA']")
         recaptcha_frame_name = await self.page.locator("//iframe[@title='reCAPTCHA']").get_attribute("name")
+
+        if recaptcha_frame_name is None:
+            raise Exception("reCAPTCHA iframe not found")
+
         captcha = self.page.frame(name=recaptcha_frame_name)
+        await captcha.wait_for_selector("//div[@class='recaptcha-checkbox-border']", state="visible")
         await captcha.click("//div[@class='recaptcha-checkbox-border']")
         await self.__random_delay()
